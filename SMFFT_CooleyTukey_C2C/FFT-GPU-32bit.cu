@@ -105,6 +105,7 @@ __device__ __inline__ void reorder_16_register(float2 *A_DFT_value, float2 *B_DF
 	(*D_DFT_value) = Df2temp;
 }
 
+//2**5
 __device__ __inline__ void reorder_32_register(float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	float2 Af2temp, Bf2temp, Cf2temp, Df2temp;
 	unsigned int target = ((unsigned int) __brev( threadIdx.x ))>>(27);
@@ -128,7 +129,7 @@ __device__ __inline__ void reorder_32(float2 *s_input, float2 *A_DFT_value, floa
 	reorder_32_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
 }
 
-
+//2**6
 template<class const_params>
 __device__ __inline__ void reorder_64(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -139,6 +140,7 @@ __device__ __inline__ void reorder_64(float2 *s_input, float2 *A_DFT_value, floa
 	
 	// reorder elements within warp so we can save them in semi-transposed manner into shared memory
 	__syncthreads();
+    //                             local_id/2**(10-6)            2=2**(6-5)            15=2**(10-6)-1    132=33*4
 	unsigned int sm_store_pos = (local_id>>4) + 2*(local_id&15) + warp_id*132;
 	s_input[sm_store_pos]          = *A_DFT_value;
 	s_input[sm_store_pos + 33]     = *B_DFT_value;
@@ -146,6 +148,7 @@ __device__ __inline__ void reorder_64(float2 *s_input, float2 *A_DFT_value, floa
 	s_input[66 + sm_store_pos +33] = *D_DFT_value;
 	
 	// Read shared memory to get reordered input
+//                                      1=2**(6-5)-1
 	unsigned int sm_read_pos = (local_id&1)*32 + local_id + warp_id*132;
 	__syncthreads();
 	*A_DFT_value = s_input[sm_read_pos];
@@ -154,7 +157,7 @@ __device__ __inline__ void reorder_64(float2 *s_input, float2 *A_DFT_value, floa
 	*D_DFT_value = s_input[sm_read_pos + 66 + 1];
 }
 
-
+//2**7
 template<class const_params>
 __device__ __inline__ void reorder_128(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -164,6 +167,7 @@ __device__ __inline__ void reorder_128(float2 *s_input, float2 *A_DFT_value, flo
 	reorder_32_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
 	
 	__syncwarp();
+   //                            local_id/2**(10-7)                4=2**(7-5)         7=2**(10-7)-1
 	unsigned int sm_store_pos = (local_id>>3) + 4*(local_id&7) + warp_id*132;
 	s_input[sm_store_pos]           = *A_DFT_value;
 	s_input[sm_store_pos + 33]      = *B_DFT_value;
@@ -172,6 +176,7 @@ __device__ __inline__ void reorder_128(float2 *s_input, float2 *A_DFT_value, flo
 	
 	// Read shared memory to get reordered input
 	__syncwarp();
+//                                      3=2**(7-5)-1
 	unsigned int sm_read_pos = (local_id&3)*32 + local_id + warp_id*132;
 	*A_DFT_value = s_input[sm_read_pos];
 	*B_DFT_value = s_input[sm_read_pos + 1];
@@ -182,7 +187,7 @@ __device__ __inline__ void reorder_128(float2 *s_input, float2 *A_DFT_value, flo
 	reorder_4_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
 }
 
-
+//2**8
 template<class const_params>
 __device__ __inline__ void reorder_256(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -193,6 +198,7 @@ __device__ __inline__ void reorder_256(float2 *s_input, float2 *A_DFT_value, flo
 	
 	// reorder elements within warp so we can save them in semi-transposed manner into shared memory
 	__syncthreads();
+   //                               local_id/2**(10-8)             8=2**(8-5)         3=2**(10-8)-1    132=33*4
 	unsigned int sm_store_pos = (local_id>>2) + 8*(local_id&3) + warp_id*132;
 	s_input[sm_store_pos]           = *A_DFT_value;
 	s_input[sm_store_pos + 33]      = *B_DFT_value;
@@ -201,6 +207,7 @@ __device__ __inline__ void reorder_256(float2 *s_input, float2 *A_DFT_value, flo
 	
 	// Read shared memory to get reordered input
 	__syncthreads();
+//                                      7=2**(8-5)-1
 	unsigned int sm_read_pos = (local_id&7)*32 + local_id;
 	*A_DFT_value = s_input[sm_read_pos + warp_id*4 + 0];
 	*B_DFT_value = s_input[sm_read_pos + warp_id*4 + 1];
@@ -211,6 +218,7 @@ __device__ __inline__ void reorder_256(float2 *s_input, float2 *A_DFT_value, flo
 	reorder_8_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value, &local_id);
 }
 
+//2**9
 template<class const_params>
 __device__ __inline__ void reorder_512(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -221,6 +229,7 @@ __device__ __inline__ void reorder_512(float2 *s_input, float2 *A_DFT_value, flo
 	
 	// reorder elements within warp so we can save them in semi-transposed manner into shared memory
 	__syncthreads();
+   //                             local_id/2**(10-9)               16=2**(9-5)         1=2**(10-9)-1    132=33*4
 	unsigned int sm_store_pos = (local_id>>1) + 16*(local_id&1) + warp_id*132;
 	s_input[sm_store_pos]           = *A_DFT_value;
 	s_input[sm_store_pos + 33]      = *B_DFT_value;
@@ -228,6 +237,7 @@ __device__ __inline__ void reorder_512(float2 *s_input, float2 *A_DFT_value, flo
 	s_input[66 + sm_store_pos + 33] = *D_DFT_value;
 	
 	// Read shared memory to get reordered input
+//                                      15=2**(9-5)-1
 	unsigned int sm_read_pos = (local_id&15)*32 + local_id  + warp_id*4;
 	__syncthreads();
 	*A_DFT_value = s_input[sm_read_pos + 0];
@@ -239,6 +249,7 @@ __device__ __inline__ void reorder_512(float2 *s_input, float2 *A_DFT_value, flo
 	reorder_16_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value, &local_id);
 }
 
+//2**10
 template<class const_params>
 __device__ __inline__ void reorder_1024(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -249,6 +260,7 @@ __device__ __inline__ void reorder_1024(float2 *s_input, float2 *A_DFT_value, fl
 	
 	// reorder elements within warp so we can save them in semi-transposed manner into shared memory
 	__syncthreads();
+    //                             local_id/2**(10-10)               32=2**(10-5)         0=2**(10-10)-1     132=33*4
 	unsigned int sm_store_pos = (local_id>>0) + 32*(local_id&0) + warp_id*132;
 	s_input[sm_store_pos]           = *A_DFT_value;
 	s_input[sm_store_pos + 33]      = *B_DFT_value;
@@ -256,6 +268,7 @@ __device__ __inline__ void reorder_1024(float2 *s_input, float2 *A_DFT_value, fl
 	s_input[66 + sm_store_pos + 33] = *D_DFT_value;
 	
 	// Read shared memory to get reordered input
+//                                      31=2**(10-5)-1
 	unsigned int sm_read_pos = (local_id&31)*32 + local_id  + warp_id*4;
 	__syncthreads();
 	*A_DFT_value = s_input[sm_read_pos + 0];
@@ -267,6 +280,7 @@ __device__ __inline__ void reorder_1024(float2 *s_input, float2 *A_DFT_value, fl
 	reorder_32_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
 }
 
+// 2048=2**11
 template<class const_params>
 __device__ __inline__ void reorder_2048(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -277,6 +291,7 @@ __device__ __inline__ void reorder_2048(float2 *s_input, float2 *A_DFT_value, fl
 	
 	
 	__syncthreads();
+//                             same as 1024
 	//unsigned int sm_store_pos = (local_id>>0) + 32*(local_id&0) + warp_id*132;
 	unsigned int sm_store_pos = local_id + warp_id*132;
 	s_input[sm_store_pos]      = *A_DFT_value;
@@ -286,10 +301,11 @@ __device__ __inline__ void reorder_2048(float2 *s_input, float2 *A_DFT_value, fl
 	
 	// Read shared memory to get reordered input
 	__syncthreads();
+//                       31 same as 1024       33 vs 32     2 vs 4
 	//unsigned int sm_read_pos = (local_id&31)*33 + warp_id*2;
 	unsigned int sm_read_pos = local_id*33 + warp_id*2;
 	*A_DFT_value = s_input[sm_read_pos + 0];
-	*B_DFT_value = s_input[sm_read_pos + 1056];
+	*B_DFT_value = s_input[sm_read_pos + 1056]; // 1056=32*33
 	*C_DFT_value = s_input[sm_read_pos + 1];
 	*D_DFT_value = s_input[sm_read_pos + 1056 + 1];
 	
@@ -298,7 +314,7 @@ __device__ __inline__ void reorder_2048(float2 *s_input, float2 *A_DFT_value, fl
 }
 
 
-
+// 4096 = 2**12
 template<class const_params>
 __device__ __inline__ void reorder_4096(float2 *s_input, float2 *A_DFT_value, float2 *B_DFT_value, float2 *C_DFT_value, float2 *D_DFT_value){
 	int local_id = threadIdx.x & (const_params::warp - 1);
@@ -308,6 +324,7 @@ __device__ __inline__ void reorder_4096(float2 *s_input, float2 *A_DFT_value, fl
 	reorder_32_register(A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
 	
 	__syncthreads();
+//                             same as 1024
 	//unsigned int sm_store_pos = (local_id>>0) + 32*(local_id&0) + warp_id*132;
 	unsigned int sm_store_pos = local_id + warp_id*132;
 	s_input[sm_store_pos]      = *A_DFT_value;
@@ -317,12 +334,13 @@ __device__ __inline__ void reorder_4096(float2 *s_input, float2 *A_DFT_value, fl
 	
 	// Read shared memory to get reordered input
 	__syncthreads();
+//                             same as 2048
 	//unsigned int sm_read_pos = (local_id&31)*33 + warp_id*2;
 	unsigned int sm_read_pos = local_id*33 + warp_id;
 	*A_DFT_value = s_input[sm_read_pos + 0];
-	*B_DFT_value = s_input[sm_read_pos + 1056];
-	*C_DFT_value = s_input[sm_read_pos + 2112];
-	*D_DFT_value = s_input[sm_read_pos + 3168];
+	*B_DFT_value = s_input[sm_read_pos + 1056]; // 1056=32*33
+	*C_DFT_value = s_input[sm_read_pos + 2112]; // 2112=33*64
+	*D_DFT_value = s_input[sm_read_pos + 3168]; // 3168=33*96
 	
 	__syncthreads();
 	reorder_128<const_params>(s_input, A_DFT_value, B_DFT_value, C_DFT_value, D_DFT_value);
